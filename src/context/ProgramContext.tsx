@@ -14,6 +14,7 @@ interface ProgramContextType {
   addExerciseToDay: (programId: string, day: number, exerciseId: string) => Promise<void>;
   removeExerciseFromDay: (programId: string, day: number, exerciseId: string) => Promise<void>;
   updateProgramExercises: (programId: string, exercises: DailyExercises) => Promise<void>;
+  toggleProgramActive: (id: string) => Promise<void>;
 }
 
 const ProgramContext = createContext<ProgramContextType | null>(null);
@@ -188,6 +189,33 @@ export const ProgramProvider: React.FC<ProgramProviderProps> = ({ children }) =>
     }
   };
 
+  // Basculer l'état actif d'un programme
+  const toggleProgramActive = async (id: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const program = programs.find(p => p.id === id);
+      if (!program) throw new Error('Programme non trouvé');
+      
+      const updatedProgram = await programService.update(id, {
+        ...program,
+        actif: !program.actif
+      });
+      
+      // Mettre à jour la liste sans recharger tous les programmes
+      setPrograms(prev => 
+        prev.map(p => p.id === id ? updatedProgram : p)
+      );
+    } catch (err) {
+      console.error(`Erreur lors du changement d'état du programme ${id}:`, err);
+      setError(err instanceof Error ? err.message : 'Une erreur est survenue');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <ProgramContext.Provider
       value={{
@@ -201,7 +229,8 @@ export const ProgramProvider: React.FC<ProgramProviderProps> = ({ children }) =>
         refreshPrograms: fetchPrograms,
         addExerciseToDay,
         removeExerciseFromDay,
-        updateProgramExercises
+        updateProgramExercises,
+        toggleProgramActive
       }}
     >
       {children}

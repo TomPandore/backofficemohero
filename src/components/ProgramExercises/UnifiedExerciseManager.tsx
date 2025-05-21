@@ -59,6 +59,11 @@ const UnifiedExerciseManager: React.FC<UnifiedExerciseManagerProps> = ({
   const [filteredExercises, setFilteredExercises] = useState<BankExercise[]>([]);
   const [isAddPanelOpen, setIsAddPanelOpen] = useState(false);
   
+  // États pour la modal de valeur cible
+  const [isTargetModalOpen, setIsTargetModalOpen] = useState(false);
+  const [selectedExercise, setSelectedExercise] = useState<BankExercise | null>(null);
+  const [targetValue, setTargetValue] = useState('');
+  
   // Chargement initial des données
   useEffect(() => {
     loadProgramData();
@@ -235,7 +240,7 @@ const UnifiedExerciseManager: React.FC<UnifiedExerciseManagerProps> = ({
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(ex => 
-        ex.name.toLowerCase().includes(query) || 
+        ex.nom.toLowerCase().includes(query) || 
         (ex.categorie && ex.categorie.toLowerCase().includes(query))
       );
     }
@@ -256,8 +261,24 @@ const UnifiedExerciseManager: React.FC<UnifiedExerciseManagerProps> = ({
     }
   };
   
-  // Ajout d'un exercice
-  const handleAddExercise = async (exercise: BankExercise) => {
+  // Ouvrir la modal pour définir la valeur cible
+  const handleOpenTargetModal = (exercise: BankExercise) => {
+    setSelectedExercise(exercise);
+    setTargetValue('10 répétitions'); // Valeur par défaut
+    setIsTargetModalOpen(true);
+  };
+  
+  // Fermer la modal
+  const handleCloseTargetModal = () => {
+    setIsTargetModalOpen(false);
+    setSelectedExercise(null);
+    setTargetValue('');
+  };
+  
+  // Ajouter l'exercice avec la valeur cible définie
+  const handleConfirmAddExercise = async () => {
+    if (!selectedExercise) return;
+    
     // Trouver l'ID du jour correspondant au jour actuel
     const jourInfo = jours.find(j => j.numero_jour === currentDay);
     if (!jourInfo) {
@@ -266,26 +287,28 @@ const UnifiedExerciseManager: React.FC<UnifiedExerciseManagerProps> = ({
     }
     
     setIsLoading(true);
+    setIsTargetModalOpen(false);
     
     try {
       // Préparer les données de l'exercice
       const exerciceData = {
-        nom: exercise.name || 'Exercice sans nom',
-        type: exercise.type,
-        niveau: exercise.level,
+        nom: selectedExercise.nom || 'Exercice sans nom',
+        type: selectedExercise.type,
+        niveau: 1, // Niveau par défaut
         // Attribuer un ordre en fonction du nombre d'exercices existants
         ordre: (exercisesByJour[jourInfo.id]?.length || 0) + 1,
-        description: exercise.description,
-        categorie: exercise.categorie,
-        image_url: exercise.image_url,
-        video_url: exercise.video_url
+        description: selectedExercise.description,
+        categorie: selectedExercise.categorie,
+        image_url: selectedExercise.image_url,
+        video_url: selectedExercise.video_url,
+        valeur_cible: targetValue // Valeur définie par l'utilisateur
       };
       
       // Ajouter l'exercice avec le service amélioré
       const result = await exerciceService.addExercice(jourInfo.id, exerciceData);
       
       if (result.success) {
-        setSuccess(`${exercise.name} ajouté au jour ${currentDay}`);
+        setSuccess(`${selectedExercise.nom} ajouté au jour ${currentDay}`);
         await loadJoursEtExercices(); // Recharger les données
         
         if (onExercisesUpdated) {
@@ -299,7 +322,8 @@ const UnifiedExerciseManager: React.FC<UnifiedExerciseManagerProps> = ({
       setError('Erreur lors de l\'ajout de l\'exercice');
     } finally {
       setIsLoading(false);
-      // Garder le panneau ouvert pour ajouter d'autres exercices
+      setSelectedExercise(null);
+      setTargetValue('');
     }
   };
   
@@ -391,6 +415,45 @@ const UnifiedExerciseManager: React.FC<UnifiedExerciseManagerProps> = ({
       {success && (
         <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
           {success}
+        </div>
+      )}
+      
+      {/* Modal pour définir la valeur cible */}
+      {isTargetModalOpen && selectedExercise && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
+          <div className="bg-white rounded-lg p-6 w-11/12 max-w-md">
+            <h3 className="text-lg font-medium mb-4">Ajouter {selectedExercise.nom}</h3>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Nombre de répétitions / Valeur cible
+              </label>
+              <input
+                type="text"
+                value={targetValue}
+                onChange={(e) => setTargetValue(e.target.value)}
+                placeholder="ex: 10 répétitions, 3x10, 30 secondes..."
+                className="w-full p-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
+                autoFocus
+              />
+            </div>
+            
+            <div className="flex justify-end space-x-2">
+              <button
+                onClick={handleCloseTargetModal}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleConfirmAddExercise}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+                disabled={!targetValue.trim()}
+              >
+                Ajouter
+              </button>
+            </div>
+          </div>
         </div>
       )}
       
@@ -580,7 +643,7 @@ const UnifiedExerciseManager: React.FC<UnifiedExerciseManagerProps> = ({
                           {exercise.type}
                         </span>
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
-                          Niveau {exercise.niveau}
+                          Niveau 1
                         </span>
                         {exercise.valeur_cible && (
                           <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
@@ -658,11 +721,11 @@ const UnifiedExerciseManager: React.FC<UnifiedExerciseManagerProps> = ({
                       className="border rounded-lg p-3 cursor-pointer hover:bg-blue-50 hover:border-blue-200 transition-colors bg-white"
                     >
                       <div className="flex justify-between items-start">
-                        <h3 className="font-medium text-sm">{exercise.name}</h3>
+                        <h3 className="font-medium text-sm">{exercise.nom}</h3>
                         <Button
                           variant="secondary"
                           size="sm"
-                          onClick={() => handleAddExercise(exercise)}
+                          onClick={() => handleOpenTargetModal(exercise)}
                           className="h-6 text-xs ml-1 bg-green-50 text-green-700 hover:bg-green-100 border-green-200"
                         >
                           <Plus className="h-3 w-3 mr-1" />
@@ -674,7 +737,7 @@ const UnifiedExerciseManager: React.FC<UnifiedExerciseManagerProps> = ({
                           {exercise.type}
                         </span>
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                          Niveau {exercise.level}
+                          Niveau 1
                         </span>
                       </div>
                     </div>

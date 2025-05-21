@@ -41,7 +41,8 @@ const ProgramForm: React.FC<ProgramFormProps> = ({
     summary: [],
     image_url: '',
     niveau_difficulte: 'medium',
-    exercises: {}
+    exercises: {},
+    actif: false
   });
   
   const [showImageUpload, setShowImageUpload] = useState(false);
@@ -64,7 +65,8 @@ const ProgramForm: React.FC<ProgramFormProps> = ({
         summary: Array.isArray(program.summary) ? program.summary : [],
         image_url: program.image_url || '',
         niveau_difficulte: program.niveau_difficulte || 'medium',
-        exercises: program.exercises || {}
+        exercises: program.exercises || {},
+        actif: program.actif ?? false
       });
     }
   }, [program]);
@@ -467,6 +469,35 @@ const ProgramForm: React.FC<ProgramFormProps> = ({
         {errors.summary && (
           <p className="mt-1 text-sm text-red-600">{errors.summary}</p>
         )}
+      </div>
+
+      {/* État du programme */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          État du programme
+        </label>
+        <div className="flex gap-4">
+          <label className="inline-flex items-center">
+            <input
+              type="radio"
+              name="actif"
+              checked={formData.actif}
+              onChange={() => setFormData(prev => ({ ...prev, actif: true }))}
+              className="form-radio h-4 w-4 text-blue-600"
+            />
+            <span className="ml-2">Actif (disponible dans l'app)</span>
+          </label>
+          <label className="inline-flex items-center">
+            <input
+              type="radio"
+              name="actif"
+              checked={!formData.actif}
+              onChange={() => setFormData(prev => ({ ...prev, actif: false }))}
+              className="form-radio h-4 w-4 text-blue-600"
+            />
+            <span className="ml-2">Brouillon (non disponible)</span>
+          </label>
+        </div>
       </div>
 
       {/* Boutons d'action */}

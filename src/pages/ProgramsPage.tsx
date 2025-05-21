@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Plus, Edit, Trash2, RefreshCw, Settings, Dumbbell, Eye } from 'lucide-react';
+import { Plus, Edit, Trash2, RefreshCw, Settings, Dumbbell, Eye, EyeOff } from 'lucide-react';
 import { usePrograms } from '../context/ProgramContext';
 import { Program } from '../types';
 import PageContainer from '../components/Layout/PageContainer';
 import Button from '../components/UI/Button';
 
 const ProgramsPage: React.FC = () => {
-  const { programs, loading, error, deleteProgram, refreshPrograms } = usePrograms();
+  const { programs, loading, error, deleteProgram, refreshPrograms, toggleProgramActive } = usePrograms();
   const navigate = useNavigate();
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
@@ -89,6 +89,9 @@ const ProgramsPage: React.FC = () => {
                   Difficulté
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  État
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Exercices
                 </th>
                 <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -147,6 +150,15 @@ const ProgramsPage: React.FC = () => {
                           : 'Moyen'}
                     </span>
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      program.actif 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-gray-100 text-gray-800'
+                    }`}>
+                      {program.actif ? 'Actif' : 'Brouillon'}
+                    </span>
+                  </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {program.exercises 
                       ? Object.keys(program.exercises).length 
@@ -154,6 +166,14 @@ const ProgramsPage: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex justify-end space-x-2">
+                      <Button
+                        variant={program.actif ? "secondary" : "primary"}
+                        onClick={() => toggleProgramActive(program.id)}
+                        className={`!p-1 ${program.actif ? 'bg-gray-600 hover:bg-gray-700' : 'bg-green-600 hover:bg-green-700'} text-white`}
+                        title={program.actif ? "Mettre en brouillon" : "Publier"}
+                      >
+                        {program.actif ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </Button>
                       <Button
                         variant="primary"
                         onClick={() => navigate(`/edit-program/${program.id}`)}

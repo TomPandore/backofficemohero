@@ -38,6 +38,7 @@ export interface Program {
   image_url?: string;
   exercises?: DailyExercises;
   niveau_difficulte?: 'easy' | 'medium' | 'hard';
+  actif: boolean;
 }
 
 export interface CreateProgramFormData extends Omit<Program, 'id'> {

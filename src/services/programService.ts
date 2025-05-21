@@ -22,7 +22,8 @@ const mapDbProgramToProgram = (dbProgram: any): Program => {
     summary: Array.isArray(dbProgram.parcours_resume) ? dbProgram.parcours_resume : [],
     image_url: dbProgram.image_url || '',
     niveau_difficulte: dbProgram.niveau_difficulte || 'medium',
-    exercises: dbProgram.exercises || {}
+    exercises: dbProgram.exercises || {},
+    actif: dbProgram.actif ?? false
   };
 };
 
@@ -38,7 +39,8 @@ const mapProgramToDbProgram = (program: Omit<Program, 'id'>) => {
     resultats: Array.isArray(program.results) ? program.results : [],
     parcours_resume: Array.isArray(program.summary) ? program.summary : [],
     image_url: program.image_url || '',
-    niveau_difficulte: program.niveau_difficulte || 'medium'
+    niveau_difficulte: program.niveau_difficulte || 'medium',
+    actif: program.actif ?? false
   };
 };
 
