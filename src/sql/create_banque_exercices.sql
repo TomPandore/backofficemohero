@@ -4,7 +4,7 @@
 CREATE TABLE IF NOT EXISTS public.banque_exercices (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     name TEXT NOT NULL,
-    type TEXT CHECK (type IN ('push', 'pull', 'squat', 'core', 'animal_flow', 'mobilité', 'respiration')) NOT NULL,
+    type TEXT CHECK (type IN ('push', 'pull', 'squat', 'core', 'Animal Flow', 'mobilite', 'respiration')) NOT NULL,
     level INTEGER CHECK (level IN (1, 2, 3)) NOT NULL,
     zones TEXT[] DEFAULT '{}'::TEXT[] NOT NULL,
     categorie TEXT,

@@ -35,7 +35,8 @@ const ExerciseBankPage: React.FC = () => {
     categorie: '',
     description: '',
     image_url: '',
-    video_url: ''
+    video_url: '',
+    variante: ''
   });
   
   // Chargement initial des données
@@ -104,7 +105,8 @@ const ExerciseBankPage: React.FC = () => {
       categorie: '',
       description: '',
       image_url: '',
-      video_url: ''
+      video_url: '',
+      variante: ''
     });
     setIsModalOpen(true);
   };
@@ -118,7 +120,8 @@ const ExerciseBankPage: React.FC = () => {
       categorie: exercise.categorie || '',
       description: exercise.description || '',
       image_url: exercise.image_url || '',
-      video_url: exercise.video_url || ''
+      video_url: exercise.video_url || '',
+      variante: exercise.variante || ''
     });
     setIsModalOpen(true);
   };
@@ -379,73 +382,60 @@ const ExerciseBankPage: React.FC = () => {
           ) : filteredExercises.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {filteredExercises.map(exercise => (
-                <div 
-                  key={exercise.id} 
-                  className="bg-white border border-gray-200 rounded-xl overflow-hidden hover:shadow-md transition-all hover:translate-y-[-2px]"
+                <div
+                  key={exercise.id}
+                  className="bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow"
                 >
-                  {/* Image de couverture avec overlay dégradé */}
-                  <div 
-                    className="h-36 bg-gray-100 relative overflow-hidden" 
-                    style={{
-                      backgroundImage: `url(${getImageUrl(exercise)})`,
-                      backgroundSize: 'cover',
-                      backgroundPosition: 'center',
-                      backgroundRepeat: 'no-repeat'
-                    }}
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-b from-black/10 to-black/60 flex items-end">
-                      <div className="p-3 w-full">
-                        <div className="flex justify-between items-end">
-                          <div>
-                            <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium text-white ${getTypeColor(exercise.type)}`}>
-                              {getTypeLabel(exercise.type)}
-                            </span>
-                          </div>
-                          <div className="flex space-x-1">
-                            <button
-                              onClick={() => handleEditExercise(exercise)}
-                              className="p-1 bg-white/90 text-gray-700 rounded-full hover:bg-white"
-                            >
-                              <Pencil size={14} />
-                            </button>
-                            <button
-                              onClick={() => handleDeleteExercise(exercise.id, exercise.nom)}
-                              className="p-1 bg-white/90 text-gray-700 rounded-full hover:bg-white"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Contenu de la carte */}
                   <div className="p-4">
-                    <h3 className="font-medium text-gray-900 mb-1">{exercise.nom}</h3>
+                    <div className="flex justify-between items-start mb-2">
+                      <h3 className="text-lg font-medium text-gray-900">{exercise.nom}</h3>
+                      <div className="flex space-x-1">
+                        <button
+                          onClick={() => handleEditExercise(exercise)}
+                          className="p-1 text-blue-600 hover:text-blue-800 rounded-full hover:bg-blue-50"
+                          title="Modifier"
+                        >
+                          <Pencil size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteExercise(exercise.id, exercise.nom)}
+                          className="p-1 text-red-600 hover:text-red-800 rounded-full hover:bg-red-50"
+                          title="Supprimer"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium text-white ${getTypeColor(exercise.type)}`}>
+                        {getTypeLabel(exercise.type)}
+                      </span>
+                      {exercise.categorie && (
+                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                          {exercise.categorie}
+                        </span>
+                      )}
+                    </div>
+
                     {exercise.description && (
-                      <p className="text-sm text-gray-600 line-clamp-2 min-h-[40px]">
-                        {exercise.description}
-                      </p>
+                      <p className="text-sm text-gray-600 mb-2">{exercise.description}</p>
                     )}
-                    
-                    {/* Groupes musculaires dans la description */}
-                    {exercise.categorie && (
-                      <div className="mt-2 pt-2 border-t border-gray-100">
-                        <span className="text-xs text-gray-500 font-medium uppercase">Catégorie:</span>
-                        <span className="ml-1 text-xs text-gray-700">{exercise.categorie}</span>
+
+                    {exercise.variante && (
+                      <div className="mt-2 p-2 bg-green-50 rounded-md">
+                        <p className="text-xs font-medium text-green-800 mb-1">Variante plus facile :</p>
+                        <p className="text-sm text-green-700">{exercise.variante}</p>
                       </div>
                     )}
-                    
-                    {/* Badge d'ajout (check) */}
-                    <div className="absolute top-2 right-2">
-                      <button
-                        className="w-7 h-7 rounded-full bg-white/90 text-blue-600 shadow-sm hover:bg-white flex items-center justify-center"
-                        title="Ajouter cet exercice"
-                      >
-                        <Plus size={16} />
-                      </button>
-                    </div>
+
+                    {exercise.image_url && (
+                      <img
+                        src={getImageUrl(exercise)}
+                        alt={exercise.nom}
+                        className="w-full h-32 object-cover rounded-md mt-2"
+                      />
+                    )}
                   </div>
                 </div>
               ))}
@@ -469,8 +459,9 @@ const ExerciseBankPage: React.FC = () => {
       {/* Modal d'ajout/modification d'exercice */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl overflow-hidden">
-            <div className="p-4 border-b flex justify-between items-center">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+            {/* En-tête fixe */}
+            <div className="p-4 border-b flex justify-between items-center shrink-0">
               <h2 className="text-lg font-medium text-gray-800">
                 {editingExercise ? `Modifier l'exercice: ${editingExercise.nom}` : 'Ajouter un nouvel exercice'}
               </h2>
@@ -482,111 +473,144 @@ const ExerciseBankPage: React.FC = () => {
               </button>
             </div>
             
-            <form onSubmit={handleSaveExercise}>
-              <div className="p-4 space-y-4">
-                <div>
-                  <label htmlFor="nom" className="block text-sm font-medium text-gray-700">
-                    Nom de l'exercice <span className="text-red-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    id="nom"
-                    name="nom"
-                    value={formData.nom}
-                    onChange={handleInputChange}
-                    required
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                  />
+            <form onSubmit={handleSaveExercise} className="flex flex-col h-full">
+              {/* Contenu scrollable */}
+              <div className="p-4 space-y-4 overflow-y-auto flex-grow">
+                {/* Première rangée : Nom et Type */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="nom" className="block text-sm font-medium text-gray-700">
+                      Nom de l'exercice <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      id="nom"
+                      name="nom"
+                      value={formData.nom}
+                      onChange={handleInputChange}
+                      required
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="type" className="block text-sm font-medium text-gray-700">
+                      Type d'exercice <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                      id="type"
+                      name="type"
+                      value={formData.type}
+                      onChange={handleInputChange}
+                      required
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      {exerciseTypes.map(type => (
+                        <option key={type.value} value={type.value}>
+                          {type.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
-                
-                <div>
-                  <label htmlFor="type" className="block text-sm font-medium text-gray-700">
-                    Type d'exercice <span className="text-red-500">*</span>
-                  </label>
-                  <select
-                    id="type"
-                    name="type"
-                    value={formData.type}
-                    onChange={handleInputChange}
-                    required
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="">Sélectionner un type</option>
-                    {exerciseTypes.map(type => (
-                      <option key={type.value} value={type.value}>
-                        {type.label}
-                      </option>
-                    ))}
-                  </select>
+
+                {/* Description et Variante */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="description" className="block text-sm font-medium text-gray-700">
+                      Description
+                    </label>
+                    <textarea
+                      id="description"
+                      name="description"
+                      value={formData.description}
+                      onChange={handleInputChange}
+                      rows={3}
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="variante" className="block text-sm font-medium text-gray-700">
+                      Variante plus facile
+                    </label>
+                    <textarea
+                      id="variante"
+                      name="variante"
+                      value={formData.variante}
+                      onChange={handleInputChange}
+                      rows={3}
+                      placeholder="Décrivez une variante plus facile..."
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
                 </div>
-                
-                <div>
-                  <label htmlFor="categorie" className="block text-sm font-medium text-gray-700">
-                    Catégorie
-                  </label>
-                  <input
-                    type="text"
-                    id="categorie"
-                    name="categorie"
-                    value={formData.categorie}
-                    onChange={handleInputChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Ex: Haut du corps, Cardio, etc."
-                  />
+
+                {/* Catégorie et URLs */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="categorie" className="block text-sm font-medium text-gray-700">
+                      Catégorie
+                    </label>
+                    <input
+                      type="text"
+                      id="categorie"
+                      name="categorie"
+                      value={formData.categorie}
+                      onChange={handleInputChange}
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="image_url" className="block text-sm font-medium text-gray-700">
+                      URL de l'image
+                    </label>
+                    <input
+                      type="url"
+                      id="image_url"
+                      name="image_url"
+                      value={formData.image_url}
+                      onChange={handleInputChange}
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="https://exemple.com/image.jpg"
+                    />
+                  </div>
                 </div>
-                
-                <div>
-                  <label htmlFor="description" className="block text-sm font-medium text-gray-700">
-                    Description
-                  </label>
-                  <textarea
-                    id="description"
-                    name="description"
-                    value={formData.description}
-                    onChange={handleInputChange}
-                    rows={3}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Description et groupes musculaires ciblés (ex: poitrine, épaules, triceps)"
-                  />
+
+                {/* URLs des médias */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label htmlFor="video_url" className="block text-sm font-medium text-gray-700">
+                      URL de la vidéo
+                    </label>
+                    <input
+                      type="url"
+                      id="video_url"
+                      name="video_url"
+                      value={formData.video_url}
+                      onChange={handleInputChange}
+                      className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="https://exemple.com/video.mp4"
+                    />
+                  </div>
                 </div>
-                
-                <div>
-                  <label htmlFor="image_url" className="block text-sm font-medium text-gray-700">
-                    URL de l'image
-                  </label>
-                  <input
-                    type="url"
-                    id="image_url"
-                    name="image_url"
-                    value={formData.image_url}
-                    onChange={handleInputChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="https://exemple.com/image.jpg"
-                  />
-                  {formData.image_url && (
-                    <div className="mt-2 h-36 bg-gray-100 rounded-lg overflow-hidden">
-                      <img src={formData.image_url} alt="Aperçu" className="w-full h-full object-cover" onError={(e) => (e.currentTarget.src = 'https://via.placeholder.com/150?text=Erreur+Image')} />
-                    </div>
-                  )}
-                </div>
-                
-                <div>
-                  <label htmlFor="video_url" className="block text-sm font-medium text-gray-700">
-                    URL de la vidéo
-                  </label>
-                  <input
-                    type="url"
-                    id="video_url"
-                    name="video_url"
-                    value={formData.video_url}
-                    onChange={handleInputChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="https://exemple.com/video.mp4"
-                  />
-                </div>
+
+                {/* Aperçu de l'image si disponible */}
+                {formData.image_url && (
+                  <div className="mt-2">
+                    <img 
+                      src={formData.image_url} 
+                      alt="Aperçu" 
+                      className="h-32 w-auto object-cover rounded-lg"
+                      onError={(e) => (e.currentTarget.src = 'https://via.placeholder.com/150?text=Erreur+Image')}
+                    />
+                  </div>
+                )}
               </div>
               
-              <div className="p-4 border-t flex justify-end space-x-3">
+              {/* Pied de page fixe avec les boutons d'action */}
+              <div className="p-4 border-t flex justify-end space-x-3 shrink-0 bg-white">
                 <Button
                   variant="secondary"
                   type="button"

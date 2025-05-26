@@ -21,7 +21,7 @@ const ExerciseSelector: React.FC<ExerciseSelectorProps> = ({
     { value: 'squat', label: 'Squat' },
     { value: 'core', label: 'Core' },
     { value: 'animal_flow', label: 'Animal Flow' },
-    { value: 'mobilité', label: 'Mobilité' },
+    { value: 'mobilite', label: 'Mobilité' },
     { value: 'respiration', label: 'Respiration' }
   ];
   

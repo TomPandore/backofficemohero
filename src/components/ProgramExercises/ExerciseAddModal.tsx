@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Search, Filter, Plus } from 'lucide-react';
+import { X, Search, Filter, Plus, ArrowUpRight } from 'lucide-react';
 import { Exercise } from '../../types';
 import Button from '../UI/Button';
 import { bankExercisesService, BankExercise } from '../../services/bankExercisesService';
@@ -119,14 +119,16 @@ const ExerciseAddModal: React.FC<ExerciseAddModalProps> = ({
     
     // Filtrer par type
     if (selectedFilter !== 'all') {
-      filtered = filtered.filter(ex => ex.type === selectedFilter);
+      // Gérer le cas spécial pour mobilité/mobilite
+      const searchType = selectedFilter === 'mobilité' ? 'mobilite' : selectedFilter;
+      filtered = filtered.filter(ex => ex.type === searchType);
     }
     
     // Filtrer par recherche
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(ex => 
-        ex.name.toLowerCase().includes(query) || 
+        ex.nom.toLowerCase().includes(query) || 
         (ex.categorie && ex.categorie.toLowerCase().includes(query))
       );
     }
@@ -153,16 +155,17 @@ const ExerciseAddModal: React.FC<ExerciseAddModalProps> = ({
       
       // Préparer les données de l'exercice
       const exerciceData = {
-        nom: selectedExercise.name || 'Exercice sans nom',
+        nom: selectedExercise.nom || 'Exercice sans nom',
         type: selectedExercise.type,
-        niveau: selectedExercise.level,
+        niveau: selectedExercise.niveau || 1,
         ordre: ordre || 1,
         valeur_cible: valeurCible,
         description: selectedExercise.description,
         categorie: selectedExercise.categorie,
         image_url: selectedExercise.image_url,
         video_url: selectedExercise.video_url,
-        zones: selectedExercise.zones
+        variante: selectedExercise.variante,
+        zones: selectedExercise.zones || []
       };
       
       console.log("Données de l'exercice à ajouter:", exerciceData);
@@ -172,41 +175,22 @@ const ExerciseAddModal: React.FC<ExerciseAddModalProps> = ({
       
       if (result.success) {
         console.log("Exercice ajouté avec succès:", result);
-        setSuccess('Exercice ajouté avec succès' + (result.method ? ` (méthode: ${result.method})` : ''));
-        
-        // Réinitialiser le formulaire
-        setSelectedExercise(null);
-        setValeurCible('');
-        setOrdre(1);
-        
-        // Notifier le parent
-        onExerciseAdded();
-        
-        // Fermer la modal après un délai
-        setTimeout(() => {
-          onClose();
-        }, 1500);
-      } else {
-        console.error("Erreur lors de l'ajout de l'exercice:", result.error);
-        setError(`Erreur lors de l'ajout de l'exercice: ${result.error?.message || 'Erreur inconnue'}`);
-        
-        // Si le programme ID est disponible, essayer de créer manuellement le jour
-        if (programId) {
-          console.log("Tentative de diagnostic et réparation...");
-          const diagnostic = await runAutomaticRepair(programId);
-          
-          if (diagnostic.fixed) {
-            setSuccess(`Problème résolu automatiquement: ${diagnostic.message}. Veuillez réessayer.`);
-          } else {
-            setError(`Échec de l'ajout. Diagnostic: ${diagnostic.message}`);
-          }
+        setSuccess(`${selectedExercise.nom} ajouté avec succès`);
+        if (onExerciseAdded) {
+          onExerciseAdded();
         }
+        onClose();
+      } else {
+        const errorMessage = typeof result.error === 'string' 
+          ? result.error 
+          : 'Une erreur est survenue lors de l\'ajout de l\'exercice';
+        setError(errorMessage);
       }
       
       console.log("======== FIN AJOUT EXERCICE ========");
     } catch (err) {
       console.error('Erreur lors de l\'ajout de l\'exercice:', err);
-      setError('Erreur lors de l\'ajout de l\'exercice. Voir les détails dans la console.');
+      setError('Une erreur est survenue lors de l\'ajout de l\'exercice');
     } finally {
       setIsLoading(false);
     }
@@ -308,7 +292,7 @@ const ExerciseAddModal: React.FC<ExerciseAddModalProps> = ({
     { value: 'squat', label: 'Squat' },
     { value: 'core', label: 'Core' },
     { value: 'animal_flow', label: 'Animal Flow' },
-    { value: 'mobilité', label: 'Mobilité' },
+    { value: 'mobilite', label: 'Mobilité' },
     { value: 'respiration', label: 'Respiration' }
   ];
   
@@ -385,13 +369,13 @@ const ExerciseAddModal: React.FC<ExerciseAddModalProps> = ({
                     onClick={() => handleSelectExercise(exercise)}
                     className="border rounded-lg p-4 cursor-pointer hover:bg-blue-50 hover:border-blue-200 transition-colors"
                   >
-                    <h3 className="font-medium text-lg mb-1">{exercise.name}</h3>
+                    <h3 className="font-medium text-lg mb-1">{exercise.nom}</h3>
                     <div className="flex flex-wrap gap-2 mb-2">
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                         {exercise.type}
                       </span>
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                        Niveau {exercise.level}
+                        Niveau {exercise.niveau}
                       </span>
                     </div>
                     {exercise.categorie && (
@@ -418,7 +402,7 @@ const ExerciseAddModal: React.FC<ExerciseAddModalProps> = ({
           </div>
         ) : (
           <div className="p-4 flex-1 overflow-auto">
-            <h3 className="text-lg font-medium mb-4">{selectedExercise.name}</h3>
+            <h3 className="text-lg font-medium mb-4">{selectedExercise.nom}</h3>
             
             <div className="space-y-6">
               <div>
@@ -454,9 +438,31 @@ const ExerciseAddModal: React.FC<ExerciseAddModalProps> = ({
                   <p className="block text-sm font-medium text-gray-700 mb-1">Image</p>
                   <img 
                     src={selectedExercise.image_url} 
-                    alt={selectedExercise.name} 
+                    alt={selectedExercise.nom} 
                     className="rounded-md max-h-40 object-contain"
                   />
+                </div>
+              )}
+
+              {selectedExercise.video_url && (
+                <div>
+                  <p className="block text-sm font-medium text-gray-700 mb-1">Vidéo de démonstration</p>
+                  <a 
+                    href={selectedExercise.video_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-blue-600 hover:text-blue-800 flex items-center"
+                  >
+                    <ArrowUpRight size={16} className="mr-1" />
+                    Voir la vidéo
+                  </a>
+                </div>
+              )}
+
+              {selectedExercise.variante && (
+                <div>
+                  <p className="block text-sm font-medium text-gray-700 mb-1">Variante plus facile</p>
+                  <p className="text-sm text-gray-600">{selectedExercise.variante}</p>
                 </div>
               )}
             </div>

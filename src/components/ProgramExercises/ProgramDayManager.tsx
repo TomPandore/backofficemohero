@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Calendar, Dumbbell, ChevronDown, ChevronUp, X, Edit, ArrowRight } from 'lucide-react';
+import { Plus, Calendar, Dumbbell, ChevronDown, ChevronUp, X, Edit, ArrowRight, ArrowUpRight } from 'lucide-react';
 import Button from '../UI/Button';
 import { supabase } from '../../lib/supabase';
 import { programService } from '../../services/programService';
 import ExerciseAddModal from './ExerciseAddModal';
+import { Program, ExerciseData } from '../../types';
+import { BankExercise, bankExercisesService } from '../../services/bankExercisesService';
+import { exerciceService } from '../../services/exerciceService';
 
 interface ProgramDayManagerProps {
   programId: string;
-  programDuration: number;
+  programDuration?: number;
   onUpdated?: () => void;
 }
 
@@ -15,18 +18,6 @@ interface JourData {
   id: string;
   numero_jour: number;
   programme_id: string;
-}
-
-interface ExerciseData {
-  id: string;
-  jour_id: string;
-  nom: string;
-  type: string;
-  niveau: number;
-  valeur_cible?: string;
-  ordre?: number;
-  image_url?: string;
-  categorie?: string;
 }
 
 const ProgramDayManager: React.FC<ProgramDayManagerProps> = ({
@@ -84,7 +75,7 @@ const ProgramDayManager: React.FC<ProgramDayManagerProps> = ({
       for (const jour of joursData) {
         const { data: exercisesData, error: exercisesError } = await supabase
           .from('exercices')
-          .select('id, jour_id, nom, type, niveau, valeur_cible, ordre, image_url, categorie')
+          .select('id, jour_id, nom, type, niveau, valeur_cible, ordre, image_url, categorie, video_url, variante')
           .eq('jour_id', jour.id)
           .order('ordre', { ascending: true });
         
@@ -111,7 +102,8 @@ const ProgramDayManager: React.FC<ProgramDayManagerProps> = ({
       const daysToCreate = [];
       
       // Créer un jour pour chaque numéro de 1 à programDuration
-      for (let i = 1; i <= programDuration; i++) {
+      const duration = programDuration || 28; // Valeur par défaut de 28 jours si non spécifié
+      for (let i = 1; i <= duration; i++) {
         daysToCreate.push({
           programme_id: programId,
           numero_jour: i
@@ -336,6 +328,11 @@ const ProgramDayManager: React.FC<ProgramDayManagerProps> = ({
                                     <span className="font-medium">Objectif:</span> {exercise.valeur_cible}
                                   </p>
                                 )}
+                                {exercise.variante && (
+                                  <p className="text-sm text-green-600 mt-2">
+                                    <span className="font-medium">Variante plus facile:</span> {exercise.variante}
+                                  </p>
+                                )}
                               </div>
                             </div>
                             <div className="flex space-x-2">
@@ -356,6 +353,20 @@ const ProgramDayManager: React.FC<ProgramDayManagerProps> = ({
                                 alt={exercise.nom}
                                 className="h-20 object-contain rounded-md"
                               />
+                            </div>
+                          )}
+
+                          {exercise.video_url && (
+                            <div className="mt-2 ml-9">
+                              <a
+                                href={exercise.video_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:text-blue-800 flex items-center text-sm"
+                              >
+                                <ArrowUpRight size={16} className="mr-1" />
+                                Voir la vidéo de démonstration
+                              </a>
                             </div>
                           )}
                         </div>

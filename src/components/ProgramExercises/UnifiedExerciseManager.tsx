@@ -1,29 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Dumbbell, Calendar, Plus, Filter, Search, X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { usePrograms } from '../../context/ProgramContext';
 import { exerciceService } from '../../services/exerciceService';
 import { bankExercisesService, BankExercise } from '../../services/bankExercisesService';
-import { Program } from '../../types';
+import { Program, ExerciseData } from '../../types';
 import Button from '../UI/Button';
+import Modal from '../UI/Modal';
 
 interface JourData {
   id: string;
   numero_jour: number;
   programme_id: string;
-}
-
-interface ExerciseData {
-  id: string;
-  jour_id: string;
-  nom: string;
-  type: string;
-  niveau: number;
-  valeur_cible?: string;
-  ordre?: number;
-  image_url?: string;
-  categorie?: string;
 }
 
 interface UnifiedExerciseManagerProps {
@@ -64,6 +53,31 @@ const UnifiedExerciseManager: React.FC<UnifiedExerciseManagerProps> = ({
   const [selectedExercise, setSelectedExercise] = useState<BankExercise | null>(null);
   const [targetValue, setTargetValue] = useState('');
   
+  // États pour la modal d'édition
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingExercise, setEditingExercise] = useState<ExerciseData | null>(null);
+  const [editFormData, setEditFormData] = useState({
+    nom: '',
+    description: '',
+    valeur_cible: '',
+    type: '',
+    niveau: 1,
+    variante: ''
+  });
+  
+  // Gestionnaire d'erreurs global
+  const handleError = useCallback((error: any, message: string) => {
+    console.error(`${message}:`, error);
+    setError(message);
+    setIsLoading(false);
+  }, []);
+
+  // Gestionnaire de succès global
+  const handleSuccess = useCallback((message: string) => {
+    setSuccess(message);
+    setTimeout(() => setSuccess(null), 3000);
+  }, []);
+  
   // Chargement initial des données
   useEffect(() => {
     loadProgramData();
@@ -92,8 +106,7 @@ const UnifiedExerciseManager: React.FC<UnifiedExerciseManagerProps> = ({
       // Charger les jours et exercices
       await loadJoursEtExercices();
     } catch (err) {
-      console.error('Erreur lors du chargement du programme:', err);
-      setError('Erreur lors du chargement du programme');
+      handleError(err, 'Erreur lors du chargement du programme');
     } finally {
       setIsLoading(false);
     }
@@ -233,7 +246,11 @@ const UnifiedExerciseManager: React.FC<UnifiedExerciseManagerProps> = ({
     
     // Filtrer par type
     if (selectedFilter !== 'all') {
-      filtered = filtered.filter(ex => ex.type === selectedFilter);
+      // Gérer les cas spéciaux
+      const searchType = selectedFilter === 'mobilité' ? 'mobilite' : 
+                        selectedFilter === 'Animal Flow' ? 'Animal Flow' : 
+                        selectedFilter;
+      filtered = filtered.filter(ex => ex.type === searchType);
     }
     
     // Filtrer par recherche
@@ -301,6 +318,7 @@ const UnifiedExerciseManager: React.FC<UnifiedExerciseManagerProps> = ({
         categorie: selectedExercise.categorie,
         image_url: selectedExercise.image_url,
         video_url: selectedExercise.video_url,
+        variante: selectedExercise.variante,
         valeur_cible: targetValue // Valeur définie par l'utilisateur
       };
       
@@ -380,6 +398,84 @@ const UnifiedExerciseManager: React.FC<UnifiedExerciseManagerProps> = ({
     return Math.round((joursAvecExercices / jours.length) * 100);
   };
   
+  // Ouvrir la modal d'édition
+  const handleOpenEditModal = (exercise: ExerciseData) => {
+    try {
+      console.log('Opening edit modal for exercise:', exercise);
+      setEditingExercise(exercise);
+      setEditFormData({
+        nom: exercise.nom || '',
+        description: exercise.description || '',
+        valeur_cible: exercise.valeur_cible || '',
+        type: exercise.type || '',
+        niveau: exercise.niveau || 1,
+        variante: exercise.variante || ''
+      });
+      setIsEditModalOpen(true);
+    } catch (err) {
+      console.error('Error opening edit modal:', err);
+      setError('Erreur lors de l\'ouverture de la modal d\'édition');
+    }
+  };
+
+  // Fermer la modal d'édition
+  const handleCloseEditModal = () => {
+    setIsEditModalOpen(false);
+    setEditingExercise(null);
+    setEditFormData({
+      nom: '',
+      description: '',
+      valeur_cible: '',
+      type: '',
+      niveau: 1,
+      variante: ''
+    });
+  };
+
+  // Mettre à jour un exercice
+  const handleUpdateExercise = async () => {
+    if (!editingExercise) {
+      console.error('No exercise selected for update');
+      return;
+    }
+    
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      console.log('Updating exercise:', editingExercise.id, editFormData);
+      
+      const { error: updateError } = await supabase
+        .from('exercices')
+        .update({
+          nom: editFormData.nom,
+          description: editFormData.description,
+          valeur_cible: editFormData.valeur_cible,
+          type: editFormData.type,
+          niveau: editFormData.niveau,
+          variante: editFormData.variante
+        })
+        .eq('id', editingExercise.id);
+      
+      if (updateError) throw updateError;
+      
+      console.log('Exercise updated successfully');
+      setSuccess('Exercice modifié avec succès');
+      await loadJoursEtExercices(); // Recharger les données
+      
+      if (onExercisesUpdated) {
+        onExercisesUpdated();
+      }
+      
+      handleCloseEditModal();
+    } catch (err) {
+      console.error('Error updating exercise:', err);
+      setError('Erreur lors de la modification de l\'exercice');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
   // Si chargement initial
   if (isLoading && jours.length === 0) {
     return (
@@ -396,13 +492,44 @@ const UnifiedExerciseManager: React.FC<UnifiedExerciseManagerProps> = ({
     { value: 'pull', label: 'Pull' },
     { value: 'squat', label: 'Squat' },
     { value: 'core', label: 'Core' },
-    { value: 'animal_flow', label: 'Animal Flow' },
-    { value: 'mobilité', label: 'Mobilité' },
+    { value: 'Animal Flow', label: 'Animal Flow' },
+    { value: 'mobilite', label: 'Mobilité' },
     { value: 'respiration', label: 'Respiration' }
   ];
   
   const currentExercises = getCurrentDayExercises();
   const progress = getProgress();
+  
+  // Récupérer une image de placeholder si aucune image n'est fournie
+  const getImageUrl = (exercise: BankExercise): string => {
+    if (exercise.image_url) return exercise.image_url;
+    
+    // Utiliser une image par défaut selon le type d'exercice
+    switch (exercise.type) {
+      case 'push': return 'https://via.placeholder.com/150?text=Pompes';
+      case 'pull': return 'https://via.placeholder.com/150?text=Pull';
+      case 'squat': return 'https://via.placeholder.com/150?text=Squat';
+      case 'core': return 'https://via.placeholder.com/150?text=Core';
+      case 'Animal Flow': return 'https://via.placeholder.com/150?text=Animal+Flow';
+      case 'mobilite': return 'https://via.placeholder.com/150?text=Mobilité';
+      case 'respiration': return 'https://via.placeholder.com/150?text=Respiration';
+      default: return 'https://via.placeholder.com/150?text=Exercice';
+    }
+  };
+  
+  // Générer une couleur en fonction du type d'exercice
+  const getTypeColor = (typeValue: string): string => {
+    switch (typeValue) {
+      case 'push': return 'bg-blue-500';
+      case 'pull': return 'bg-purple-500';
+      case 'squat': return 'bg-green-500';
+      case 'core': return 'bg-orange-500';
+      case 'Animal Flow': return 'bg-yellow-500';
+      case 'mobilite': return 'bg-teal-500';
+      case 'respiration': return 'bg-indigo-500';
+      default: return 'bg-gray-500';
+    }
+  };
   
   return (
     <div className="space-y-4">
@@ -456,6 +583,115 @@ const UnifiedExerciseManager: React.FC<UnifiedExerciseManagerProps> = ({
           </div>
         </div>
       )}
+      
+      {/* Modal d'édition d'exercice */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={handleCloseEditModal}
+        title="Modifier l'exercice"
+        footer={
+          <div className="flex justify-end space-x-2">
+            <Button
+              variant="secondary"
+              onClick={handleCloseEditModal}
+            >
+              Annuler
+            </Button>
+            <Button
+              variant="primary"
+              onClick={handleUpdateExercise}
+              disabled={isLoading}
+            >
+              {isLoading ? 'Mise à jour...' : 'Enregistrer'}
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Nom de l'exercice
+            </label>
+            <input
+              type="text"
+              value={editFormData.nom}
+              onChange={(e) => setEditFormData({...editFormData, nom: e.target.value})}
+              className="w-full p-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Description
+            </label>
+            <textarea
+              value={editFormData.description}
+              onChange={(e) => setEditFormData({...editFormData, description: e.target.value})}
+              className="w-full p-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
+              rows={3}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Variante plus facile
+            </label>
+            <textarea
+              value={editFormData.variante}
+              onChange={(e) => setEditFormData({...editFormData, variante: e.target.value})}
+              className="w-full p-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
+              rows={2}
+              placeholder="Décrivez une variante plus facile de cet exercice..."
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Nombre de répétitions / Valeur cible
+            </label>
+            <input
+              type="text"
+              value={editFormData.valeur_cible}
+              onChange={(e) => setEditFormData({...editFormData, valeur_cible: e.target.value})}
+              className="w-full p-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Type d'exercice
+            </label>
+            <select
+              value={editFormData.type}
+              onChange={(e) => setEditFormData({...editFormData, type: e.target.value})}
+              className="w-full p-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
+            >
+              {exerciseTypes.map(type => (
+                type.value !== 'all' && (
+                  <option key={type.value} value={type.value}>
+                    {type.label}
+                  </option>
+                )
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Niveau
+            </label>
+            <select
+              value={editFormData.niveau}
+              onChange={(e) => setEditFormData({...editFormData, niveau: parseInt(e.target.value)})}
+              className="w-full p-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value={1}>Niveau 1</option>
+              <option value={2}>Niveau 2</option>
+              <option value={3}>Niveau 3</option>
+            </select>
+          </div>
+        </div>
+      </Modal>
       
       <div className="bg-white shadow rounded-lg overflow-hidden">
         {/* En-tête avec progression */}
@@ -533,42 +769,87 @@ const UnifiedExerciseManager: React.FC<UnifiedExerciseManagerProps> = ({
             <div className="flex items-center">
               <div className="font-medium text-lg">Jour {currentDay}</div>
               <span className="mx-3 text-gray-500">|</span>
-              <div className="flex overflow-x-auto space-x-1 py-1 max-w-xs scrollbar-thin">
-                {Array.from({ length: Math.min(7, programDuration) }, (_, i) => i + 1).map(day => (
-                  <button
-                    key={`day-${day}`}
-                    onClick={() => setCurrentDay(day)}
-                    className={`h-8 w-8 rounded-full flex items-center justify-center text-sm ${
-                      currentDay === day 
-                        ? 'bg-blue-600 text-white' 
-                        : exercisesByJour[jours.find(j => j.numero_jour === day)?.id || '']?.length > 0
-                          ? 'bg-green-100 text-green-800 border border-green-300' 
-                          : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
-                    }`}
-                  >
-                    {day}
-                  </button>
-                ))}
-                {programDuration > 7 && (
-                  <>
-                    <span className="flex items-center justify-center text-gray-400">...</span>
-                    {Array.from({ length: Math.min(3, programDuration - 7) }, (_, i) => programDuration - 2 + i).map(day => (
-                      <button
-                        key={`day-${day}`}
-                        onClick={() => setCurrentDay(day)}
-                        className={`h-8 w-8 rounded-full flex items-center justify-center text-sm ${
-                          currentDay === day 
-                            ? 'bg-blue-600 text-white' 
-                            : exercisesByJour[jours.find(j => j.numero_jour === day)?.id || '']?.length > 0
-                              ? 'bg-green-100 text-green-800 border border-green-300' 
-                              : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
-                        }`}
-                      >
-                        {day}
-                      </button>
-                    ))}
-                  </>
-                )}
+              <div className="flex items-center space-x-2">
+                {/* Sélecteur de jour rapide */}
+                <select
+                  value={currentDay}
+                  onChange={(e) => setCurrentDay(parseInt(e.target.value))}
+                  className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {Array.from({ length: programDuration }, (_, i) => i + 1).map(day => (
+                    <option key={day} value={day}>
+                      Jour {day} {exercisesByJour[jours.find(j => j.numero_jour === day)?.id || '']?.length > 0 ? '✓' : ''}
+                    </option>
+                  ))}
+                </select>
+
+                {/* Navigation visuelle par blocs */}
+                <div className="flex overflow-x-auto space-x-1 py-1 max-w-xs scrollbar-thin">
+                  {/* Premiers jours */}
+                  {Array.from({ length: Math.min(5, programDuration) }, (_, i) => i + 1).map(day => (
+                    <button
+                      key={`day-${day}`}
+                      onClick={() => setCurrentDay(day)}
+                      className={`h-8 w-8 rounded-full flex items-center justify-center text-sm ${
+                        currentDay === day 
+                          ? 'bg-blue-600 text-white' 
+                          : exercisesByJour[jours.find(j => j.numero_jour === day)?.id || '']?.length > 0
+                            ? 'bg-green-100 text-green-800 border border-green-300' 
+                            : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                      }`}
+                    >
+                      {day}
+                    </button>
+                  ))}
+
+                  {programDuration > 10 && (
+                    <>
+                      <span className="flex items-center justify-center text-gray-400">...</span>
+                      
+                      {/* Jours autour du jour actuel si pas dans les premiers ou derniers */}
+                      {currentDay > 5 && currentDay < programDuration - 4 && (
+                        <>
+                          {[-1, 0, 1].map(offset => {
+                            const day = currentDay + offset;
+                            return (
+                              <button
+                                key={`day-${day}`}
+                                onClick={() => setCurrentDay(day)}
+                                className={`h-8 w-8 rounded-full flex items-center justify-center text-sm ${
+                                  currentDay === day 
+                                    ? 'bg-blue-600 text-white' 
+                                    : exercisesByJour[jours.find(j => j.numero_jour === day)?.id || '']?.length > 0
+                                      ? 'bg-green-100 text-green-800 border border-green-300' 
+                                      : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                                }`}
+                              >
+                                {day}
+                              </button>
+                            );
+                          })}
+                          <span className="flex items-center justify-center text-gray-400">...</span>
+                        </>
+                      )}
+
+                      {/* Derniers jours */}
+                      {Array.from({ length: Math.min(3, programDuration - 7) }, (_, i) => programDuration - 2 + i).map(day => (
+                        <button
+                          key={`day-${day}`}
+                          onClick={() => setCurrentDay(day)}
+                          className={`h-8 w-8 rounded-full flex items-center justify-center text-sm ${
+                            currentDay === day 
+                              ? 'bg-blue-600 text-white' 
+                              : exercisesByJour[jours.find(j => j.numero_jour === day)?.id || '']?.length > 0
+                                ? 'bg-green-100 text-green-800 border border-green-300' 
+                                : 'bg-gray-100 text-gray-800 hover:bg-gray-200'
+                          }`}
+                        >
+                          {day}
+                        </button>
+                      ))}
+                    </>
+                  )}
+                </div>
               </div>
             </div>
             
@@ -630,7 +911,7 @@ const UnifiedExerciseManager: React.FC<UnifiedExerciseManagerProps> = ({
                   <div key={exercise.id} 
                     className="border rounded-lg p-3 hover:shadow-md transition-shadow bg-white flex justify-between items-start"
                   >
-                    <div>
+                    <div className="flex-grow">
                       <div className="flex items-center">
                         <div className="bg-gray-100 text-gray-800 h-6 w-6 rounded-full flex items-center justify-center text-xs mr-2">
                           {index + 1}
@@ -638,12 +919,18 @@ const UnifiedExerciseManager: React.FC<UnifiedExerciseManagerProps> = ({
                         <h4 className="font-medium">{exercise.nom}</h4>
                       </div>
                       
+                      {exercise.description && (
+                        <p className="text-sm text-gray-600 mt-1">
+                          {exercise.description}
+                        </p>
+                      )}
+                      
                       <div className="flex flex-wrap gap-1 mt-2">
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
                           {exercise.type}
                         </span>
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
-                          Niveau 1
+                          Niveau {exercise.niveau}
                         </span>
                         {exercise.valeur_cible && (
                           <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
@@ -653,6 +940,16 @@ const UnifiedExerciseManager: React.FC<UnifiedExerciseManagerProps> = ({
                       </div>
                     </div>
                     
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => handleOpenEditModal(exercise)}
+                        className="text-blue-500 hover:text-blue-700 p-1 rounded-full hover:bg-blue-50"
+                        title="Modifier cet exercice"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                          <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                        </svg>
+                      </button>
                     <button
                       onClick={() => handleDeleteExercise(exercise.id)}
                       className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-50"
@@ -660,6 +957,7 @@ const UnifiedExerciseManager: React.FC<UnifiedExerciseManagerProps> = ({
                     >
                       <X className="h-5 w-5" />
                     </button>
+                    </div>
                   </div>
                 ))}
               </div>

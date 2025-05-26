@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Plus, ChevronDown, ChevronUp, Dumbbell, Calendar, ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
 import { usePrograms } from '../../context/ProgramContext';
 import Button from '../UI/Button';
-import { Program, DailyExercises, ProgramDay } from '../../types';
+import { Program, DailyExercises, ProgramDay, ExerciseData } from '../../types';
 import ExerciseAddModal from './ExerciseAddModal';
 import { supabase } from '../../lib/supabase';
 import { programService } from '../../services/programService';
@@ -15,19 +15,6 @@ interface JourData {
   id: string;
   numero_jour: number;
   programme_id: string;
-}
-
-// Interface pour les exercices
-interface ExerciseData {
-  id: string;
-  jour_id: string;
-  nom: string;
-  type: string;
-  niveau: number;
-  valeur_cible?: string;
-  ordre?: number;
-  image_url?: string;
-  categorie?: string;
 }
 
 interface ProgramExerciseManagerProps {

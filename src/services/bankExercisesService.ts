@@ -5,10 +5,13 @@ export interface BankExercise {
   id: string;
   nom: string;
   type: string;
+  niveau: number;
+  zones: string[];
   categorie?: string;
   description?: string;
   image_url?: string;
   video_url?: string;
+  variante?: string;
 }
 
 // Types d'exercices disponibles
@@ -16,6 +19,8 @@ export const exerciseTypes = [
   { value: 'push', label: 'Push' },
   { value: 'pull', label: 'Pull' },
   { value: 'squat', label: 'Squat' },
+  { value: 'core', label: 'Core' },
+  { value: 'Animal Flow', label: 'Animal Flow' },
   { value: 'respiration', label: 'Respiration' },
   { value: 'mobilite', label: 'Mobilité' }
 ];
@@ -83,10 +88,13 @@ export const bankExercisesService = {
         .insert([{
           nom: exercise.nom,
           type: exercise.type,
+          niveau: exercise.niveau,
+          zones: exercise.zones || [],
           categorie: exercise.categorie,
           description: exercise.description,
           image_url: exercise.image_url,
-          video_url: exercise.video_url
+          video_url: exercise.video_url,
+          variante: exercise.variante
         }])
         .select()
         .single();
@@ -121,6 +129,7 @@ export const bankExercisesService = {
       if (exercise.description !== undefined) updateData.description = exercise.description;
       if (exercise.image_url !== undefined) updateData.image_url = exercise.image_url;
       if (exercise.video_url !== undefined) updateData.video_url = exercise.video_url;
+      if (exercise.variante !== undefined) updateData.variante = exercise.variante;
       
       const { data, error } = await supabase
         .from('banque_exercices')

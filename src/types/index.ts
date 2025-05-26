@@ -7,9 +7,10 @@ export interface Clan {
 export interface Exercise {
   id: string;
   name: string;
-  type: 'push' | 'pull' | 'squat' | 'core' | 'animal_flow' | 'mobilité' | 'respiration';
+  type: 'push' | 'pull' | 'squat' | 'core' | 'Animal Flow' | 'mobilite' | 'respiration';
   level: 1 | 2 | 3;
   zones: string[];
+  variante?: string;
 }
 
 export type ProgramType = 'Découverte' | 'premium' | 'premium_clan';
@@ -55,4 +56,20 @@ export interface ProgramDay {
 export interface ProgramCalendar {
   programId: string;
   days: ProgramDay[];
+}
+
+// Interface pour les exercices dans un programme
+export interface ExerciseData {
+  id: string;
+  jour_id: string;
+  nom: string;
+  type: string;
+  niveau: number;
+  valeur_cible?: string;
+  ordre?: number;
+  image_url?: string;
+  video_url?: string;
+  categorie?: string;
+  description?: string;
+  variante?: string;
 }

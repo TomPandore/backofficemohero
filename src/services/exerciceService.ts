@@ -173,6 +173,9 @@ export const exerciceService = {
           if (!adaptedData.nom && exerciceData.nom) adaptedData.nom = exerciceData.nom;
           else if (!adaptedData.nom) adaptedData.nom = 'Exercice';
           
+          // Ajouter la variante si elle est fournie
+          if (exerciceData.variante) adaptedData.variante = exerciceData.variante;
+          
           console.log('[EXERCICE SERVICE] Données adaptées:', adaptedData);
           
           // Tenter l'insertion avec la structure adaptée
@@ -183,21 +186,19 @@ export const exerciceService = {
             .single();
             
           if (insertError) {
-            console.error('[EXERCICE SERVICE] Échec de l\'insertion adaptée:', insertError);
-            // Si l'adaptation échoue, essayer la méthode normale
-            return await exerciceService.addExerciceNormal(jourId, exerciceData);
+            console.error('[EXERCICE SERVICE] Erreur lors de l\'insertion avec structure adaptée:', insertError);
+            return { success: false, error: insertError };
           }
           
-          console.log('[EXERCICE SERVICE] Succès avec données adaptées:', result);
           return { success: true, data: result, method: 'adapted' };
         }
       }
       
-      // Si aucun jour fonctionnel n'est trouvé ou si la copie échoue, utiliser la méthode normale
+      // Si aucune adaptation n'est possible, essayer l'ajout normal
       return await exerciceService.addExerciceNormal(jourId, exerciceData);
-    } catch (error) {
-      console.error('[EXERCICE SERVICE] Erreur lors de l\'ajout de l\'exercice:', error);
-      return { success: false, error };
+    } catch (err) {
+      console.error('[EXERCICE SERVICE] Erreur lors de l\'ajout de l\'exercice:', err);
+      return { success: false, error: err };
     }
   },
   
@@ -226,6 +227,7 @@ export const exerciceService = {
         if (exerciceData.niveau) filteredData.niveau = exerciceData.niveau;
         if (exerciceData.ordre) filteredData.ordre = exerciceData.ordre;
         if (exerciceData.valeur_cible) filteredData.valeur_cible = exerciceData.valeur_cible;
+        if (exerciceData.variante) filteredData.variante = exerciceData.variante;
       }
       
       console.log('[EXERCICE SERVICE] Données à insérer:', filteredData);
@@ -238,41 +240,11 @@ export const exerciceService = {
         .single();
       
       if (error) {
-        console.error('[EXERCICE SERVICE] Erreur lors de l\'insertion:', error);
-        
-        // Essayer avec les données minimales
-        console.log('[EXERCICE SERVICE] Tentative avec données minimales...');
-        const minimalData = { jour_id: jourId, nom: exerciceData.nom || 'Exercice' };
-        
-        const { data: minData, error: minError } = await supabase
-          .from('exercices')
-          .insert([minimalData])
-          .select('id')
-          .single();
-          
-        if (minError) {
-          console.error('[EXERCICE SERVICE] Même les données minimales ont échoué:', minError);
-          
-          // Dernière tentative: juste l'ID du jour
-          const { data: lastData, error: lastError } = await supabase
-            .from('exercices')
-            .insert([{ jour_id: jourId }])
-            .select('id')
-            .single();
-            
-          if (lastError) {
-            console.error('[EXERCICE SERVICE] Toutes les tentatives ont échoué:', lastError);
-            return { success: false, error: lastError };
+        console.error('[EXERCICE SERVICE] Erreur lors de l\'insertion standard:', error);
+        return { success: false, error };
           }
           
-          return { success: true, data: lastData, method: 'minimal' };
-        }
-        
-        return { success: true, data: minData, method: 'minimal' };
-      }
-      
-      console.log('[EXERCICE SERVICE] Exercice ajouté avec succès:', data);
-      return { success: true, data };
+      return { success: true, data, method: 'normal' };
     } catch (error) {
       console.error('[EXERCICE SERVICE] Erreur lors de l\'ajout standard:', error);
       return { success: false, error };
