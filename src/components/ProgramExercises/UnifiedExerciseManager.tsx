@@ -281,7 +281,7 @@ const UnifiedExerciseManager: React.FC<UnifiedExerciseManagerProps> = ({
   // Ouvrir la modal pour définir la valeur cible
   const handleOpenTargetModal = (exercise: BankExercise) => {
     setSelectedExercise(exercise);
-    setTargetValue('10 répétitions'); // Valeur par défaut
+    setTargetValue('10');
     setIsTargetModalOpen(true);
   };
   
@@ -476,6 +476,42 @@ const UnifiedExerciseManager: React.FC<UnifiedExerciseManagerProps> = ({
     }
   };
   
+  // Ajouter cette fonction pour réorganiser les exercices
+  const handleReorderExercise = async (exerciseId: string, currentIndex: number, direction: 'up' | 'down') => {
+    const jourInfo = jours.find(j => j.numero_jour === currentDay);
+    if (!jourInfo) return;
+    
+    const currentExercises = [...(exercisesByJour[jourInfo.id] || [])];
+    const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    
+    if (newIndex < 0 || newIndex >= currentExercises.length) return;
+    
+    // Échanger les positions
+    [currentExercises[currentIndex], currentExercises[newIndex]] = 
+    [currentExercises[newIndex], currentExercises[currentIndex]];
+    
+    // Mettre à jour l'ordre dans la base de données
+    try {
+      setIsLoading(true);
+      
+      // Mettre à jour l'ordre de tous les exercices affectés
+      for (let i = 0; i < currentExercises.length; i++) {
+        await supabase
+          .from('exercices')
+          .update({ ordre: i + 1 })
+          .eq('id', currentExercises[i].id);
+      }
+      
+      await loadJoursEtExercices();
+      setSuccess('Ordre des exercices mis à jour');
+    } catch (err) {
+      console.error('Erreur lors de la réorganisation:', err);
+      setError('Erreur lors de la réorganisation des exercices');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
   // Si chargement initial
   if (isLoading && jours.length === 0) {
     return (
@@ -559,10 +595,21 @@ const UnifiedExerciseManager: React.FC<UnifiedExerciseManagerProps> = ({
                 type="text"
                 value={targetValue}
                 onChange={(e) => setTargetValue(e.target.value)}
-                placeholder="ex: 10 répétitions, 3x10, 30 secondes..."
+                placeholder="ex: 10, 20, 30..."
                 className="w-full p-2 border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
                 autoFocus
               />
+              <div className="flex gap-1.5 mt-2 justify-between">
+                {[5, 10, 20, 30, 40, 45, 50].map((value) => (
+                  <button
+                    key={value}
+                    onClick={() => setTargetValue(value.toString())}
+                    className="px-3 py-2 text-base font-medium bg-green-50 text-green-700 hover:bg-green-100 rounded-md transition-colors border border-green-200 flex-1"
+                  >
+                    {value}
+                  </button>
+                ))}
+              </div>
             </div>
             
             <div className="flex justify-end space-x-2">
@@ -784,13 +831,13 @@ const UnifiedExerciseManager: React.FC<UnifiedExerciseManagerProps> = ({
                 </select>
 
                 {/* Navigation visuelle par blocs */}
-                <div className="flex overflow-x-auto space-x-1 py-1 max-w-xs scrollbar-thin">
+                <div className="hidden md:flex items-center gap-2">
                   {/* Premiers jours */}
                   {Array.from({ length: Math.min(5, programDuration) }, (_, i) => i + 1).map(day => (
                     <button
                       key={`day-${day}`}
                       onClick={() => setCurrentDay(day)}
-                      className={`h-8 w-8 rounded-full flex items-center justify-center text-sm ${
+                      className={`h-9 w-9 aspect-square rounded-full flex items-center justify-center text-sm font-medium ${
                         currentDay === day 
                           ? 'bg-blue-600 text-white' 
                           : exercisesByJour[jours.find(j => j.numero_jour === day)?.id || '']?.length > 0
@@ -804,7 +851,7 @@ const UnifiedExerciseManager: React.FC<UnifiedExerciseManagerProps> = ({
 
                   {programDuration > 10 && (
                     <>
-                      <span className="flex items-center justify-center text-gray-400">...</span>
+                      <span className="flex items-center justify-center text-gray-400 px-1">...</span>
                       
                       {/* Jours autour du jour actuel si pas dans les premiers ou derniers */}
                       {currentDay > 5 && currentDay < programDuration - 4 && (
@@ -815,7 +862,7 @@ const UnifiedExerciseManager: React.FC<UnifiedExerciseManagerProps> = ({
                               <button
                                 key={`day-${day}`}
                                 onClick={() => setCurrentDay(day)}
-                                className={`h-8 w-8 rounded-full flex items-center justify-center text-sm ${
+                                className={`h-9 w-9 aspect-square rounded-full flex items-center justify-center text-sm font-medium ${
                                   currentDay === day 
                                     ? 'bg-blue-600 text-white' 
                                     : exercisesByJour[jours.find(j => j.numero_jour === day)?.id || '']?.length > 0
@@ -827,7 +874,7 @@ const UnifiedExerciseManager: React.FC<UnifiedExerciseManagerProps> = ({
                               </button>
                             );
                           })}
-                          <span className="flex items-center justify-center text-gray-400">...</span>
+                          <span className="flex items-center justify-center text-gray-400 px-1">...</span>
                         </>
                       )}
 
@@ -836,7 +883,7 @@ const UnifiedExerciseManager: React.FC<UnifiedExerciseManagerProps> = ({
                         <button
                           key={`day-${day}`}
                           onClick={() => setCurrentDay(day)}
-                          className={`h-8 w-8 rounded-full flex items-center justify-center text-sm ${
+                          className={`h-9 w-9 aspect-square rounded-full flex items-center justify-center text-sm font-medium ${
                             currentDay === day 
                               ? 'bg-blue-600 text-white' 
                               : exercisesByJour[jours.find(j => j.numero_jour === day)?.id || '']?.length > 0
@@ -909,54 +956,75 @@ const UnifiedExerciseManager: React.FC<UnifiedExerciseManagerProps> = ({
               <div className="space-y-3 max-h-[300px] overflow-y-auto px-1 py-2">
                 {currentExercises.map((exercise, index) => (
                   <div key={exercise.id} 
-                    className="border rounded-lg p-3 hover:shadow-md transition-shadow bg-white flex justify-between items-start"
+                    className="border rounded-lg px-5 py-4 hover:shadow-md transition-shadow bg-white flex justify-between items-start"
                   >
-                    <div className="flex-grow">
-                      <div className="flex items-center">
-                        <div className="bg-gray-100 text-gray-800 h-6 w-6 rounded-full flex items-center justify-center text-xs mr-2">
-                          {index + 1}
-                        </div>
-                        <h4 className="font-medium">{exercise.nom}</h4>
+                    <div className="flex items-start">
+                      <div className="flex flex-col justify-center mr-4">
+                        <button
+                          onClick={() => handleReorderExercise(exercise.id, index, 'up')}
+                          disabled={index === 0}
+                          className={`p-2 rounded-md hover:bg-gray-100 ${index === 0 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600'}`}
+                          title="Monter"
+                        >
+                          <ChevronUp className="h-6 w-6" />
+                        </button>
+                        <div className="h-1"></div>
+                        <button
+                          onClick={() => handleReorderExercise(exercise.id, index, 'down')}
+                          disabled={index === currentExercises.length - 1}
+                          className={`p-2 rounded-md hover:bg-gray-100 ${index === currentExercises.length - 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-600'}`}
+                          title="Descendre"
+                        >
+                          <ChevronDown className="h-6 w-6" />
+                        </button>
                       </div>
-                      
-                      {exercise.description && (
-                        <p className="text-sm text-gray-600 mt-1">
-                          {exercise.description}
-                        </p>
-                      )}
-                      
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                          {exercise.type}
-                        </span>
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
-                          Niveau {exercise.niveau}
-                        </span>
-                        {exercise.valeur_cible && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
-                            {exercise.valeur_cible}
-                          </span>
+                      <div className="flex-grow">
+                        <div className="flex items-center">
+                          <div className="bg-gray-100 text-gray-800 h-7 w-7 rounded-full flex items-center justify-center text-sm mr-3">
+                            {index + 1}
+                          </div>
+                          <h4 className="font-medium">{exercise.nom}</h4>
+                        </div>
+                        
+                        {exercise.description && (
+                          <p className="text-sm text-gray-600 mt-1">
+                            {exercise.description}
+                          </p>
                         )}
+                        
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                            {exercise.type}
+                          </span>
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                            Niveau {exercise.niveau}
+                          </span>
+                          {exercise.valeur_cible && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">
+                              {exercise.valeur_cible}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                     
                     <div className="flex space-x-2">
                       <button
                         onClick={() => handleOpenEditModal(exercise)}
-                        className="text-blue-500 hover:text-blue-700 p-1 rounded-full hover:bg-blue-50"
+                        className="text-blue-500 hover:text-blue-700 p-2.5 rounded-lg hover:bg-blue-50 transition-colors"
                         title="Modifier cet exercice"
                       >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" viewBox="0 0 20 20" fill="currentColor">
                           <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
                         </svg>
                       </button>
-                    <button
-                      onClick={() => handleDeleteExercise(exercise.id)}
-                      className="text-red-500 hover:text-red-700 p-1 rounded-full hover:bg-red-50"
-                      title="Supprimer cet exercice"
-                    >
-                      <X className="h-5 w-5" />
-                    </button>
+                      <button
+                        onClick={() => handleDeleteExercise(exercise.id)}
+                        className="text-red-500 hover:text-red-700 p-2.5 rounded-lg hover:bg-red-50 transition-colors"
+                        title="Supprimer cet exercice"
+                      >
+                        <X className="h-6 w-6" />
+                      </button>
                     </div>
                   </div>
                 ))}
@@ -1016,19 +1084,14 @@ const UnifiedExerciseManager: React.FC<UnifiedExerciseManagerProps> = ({
                   {filteredExercises.map(exercise => (
                     <div
                       key={exercise.id}
-                      className="border rounded-lg p-3 cursor-pointer hover:bg-blue-50 hover:border-blue-200 transition-colors bg-white"
+                      onClick={() => handleOpenTargetModal(exercise)}
+                      className="border rounded-lg p-3 cursor-pointer hover:bg-blue-50 hover:border-blue-200 transition-colors bg-white group"
                     >
                       <div className="flex justify-between items-start">
                         <h3 className="font-medium text-sm">{exercise.nom}</h3>
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => handleOpenTargetModal(exercise)}
-                          className="h-6 text-xs ml-1 bg-green-50 text-green-700 hover:bg-green-100 border-green-200"
-                        >
-                          <Plus className="h-3 w-3 mr-1" />
-                          Ajouter
-                        </Button>
+                        <span className="text-xs text-green-600 opacity-0 group-hover:opacity-100 transition-opacity">
+                          + Ajouter
+                        </span>
                       </div>
                       <div className="flex flex-wrap gap-1 mt-1">
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">

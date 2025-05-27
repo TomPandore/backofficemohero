@@ -11,6 +11,8 @@ import StatsPage from './pages/StatsPage';
 import ProgramDaysPage from './pages/ProgramDaysPage';
 import ExerciseBankPage from './pages/ExerciseBankPage';
 import ClansPage from './pages/ClansPage';
+import BlogPage from './pages/blog';
+import EditBlogPost from './pages/blog/EditBlogPost';
 import { ProgramProvider } from './context/ProgramContext';
 import { ExerciseProvider } from './context/ExerciseContext';
 import DebugButton from './components/UI/DebugButton';
@@ -51,6 +53,9 @@ function App() {
                   <Route path="/stats" element={<StatsPage />} />
                   <Route path="/exercise-bank" element={<ExerciseBankPage />} />
                   <Route path="/clans" element={<ClansPage />} />
+                  <Route path="/blog" element={<BlogPage />} />
+                  <Route path="/blog/new" element={<EditBlogPost />} />
+                  <Route path="/blog/edit/:id" element={<EditBlogPost />} />
                 </Routes>
               </main>
               <DebugButton />

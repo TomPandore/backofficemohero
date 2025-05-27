@@ -167,12 +167,12 @@ const ProgramsPage: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div className="flex justify-end space-x-2">
                       <Button
-                        variant={program.actif ? "secondary" : "primary"}
+                        variant={program.actif ? "primary" : "secondary"}
                         onClick={() => toggleProgramActive(program.id)}
-                        className={`!p-1 ${program.actif ? 'bg-gray-600 hover:bg-gray-700' : 'bg-green-600 hover:bg-green-700'} text-white`}
-                        title={program.actif ? "Mettre en brouillon" : "Publier"}
+                        className={`!p-1 ${program.actif ? 'bg-green-600 hover:bg-green-700' : 'bg-black hover:bg-gray-800'} text-white`}
+                        title={program.actif ? "Mettre en brouillon" : "Rendre visible"}
                       >
-                        {program.actif ? <EyeOff size={16} /> : <Eye size={16} />}
+                        {program.actif ? <Eye size={16} /> : <EyeOff size={16} />}
                       </Button>
                       <Button
                         variant="primary"

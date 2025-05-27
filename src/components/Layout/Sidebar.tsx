@@ -50,6 +50,12 @@ const Sidebar: React.FC = () => {
           icon: <Dumbbell size={20} />, 
           label: 'Exercices',
           notification: true
+        },
+        { 
+          path: '/blog', 
+          icon: <FileText size={20} />, 
+          label: 'Blog',
+          notification: false
         }
       ]
     },
